@@ -80,13 +80,13 @@ samples_per_hour = int( round( 255 / 4 / 24 ) )
 days = 21
 
 #Build an audience distribution - assume start on Wed cause I like to deploy on Wed
-#hour_dist = [.01] * 24 #first day get 1% of audience per hour
-#hour_dist += [.005] * 24 #Thurs
-#hour_dist += [.005] * 24 #Fri
-#hour_dist += [.01] * 24 #Sat - uptick in new users
-#hour_dist += [.005] * 24 #Sun
-#hour_dist += [0.01/3.0] * 24 #Mon
-#hour_dist += [0.01/3.0] * 24 #Tues
+hour_dist = [.01] * 24 #first day get 1% of audience per hour
+hour_dist += [.005] * 24 #Thurs
+hour_dist += [.005] * 24 #Fri
+hour_dist += [.01] * 24 #Sat - uptick in new users
+hour_dist += [.005] * 24 #Sun
+hour_dist += [0.01/3.0] * 24 #Mon
+hour_dist += [0.01/3.0] * 24 #Tues
 
 #f(x) = log(a(x-b))
 
