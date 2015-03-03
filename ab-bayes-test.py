@@ -16,16 +16,16 @@ import time
 # Input data for simulations
 
 #WP.com Homepage Signup
-chart_name = 'WP.com Homepage Signup Simulation  (12.5k users per hour)'
-prior_conv_rate = 0.1
-samples_per_hour = 12500
-days = 3
+#chart_name = 'WP.com Homepage Signup Simulation  (12.5k users per hour)'
+#prior_conv_rate = 0.1
+#samples_per_hour = 12500
+#days = 7
 
 #Akismet Plugin Signup : https://mc.a8c.com/tracks/akismet/acquisition/plugin-signup/
-#chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
-#prior_conv_rate = 0.1456
-#samples_per_hour = 175
-#days = 7
+chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
+prior_conv_rate = 0.1456
+samples_per_hour = 175
+days = 7
 
 #Akismet Developer Signup
 #chart_name = 'Akismet Developer Signup Simulation (3 users per hour)'
@@ -40,17 +40,18 @@ significant_cutoff = 1000
 significant_cutoff_text = '1,000 samples'
 
 hi_threshold = 0.95
-hi_threshold_suffix = ' reached 95%'
+hi_threshold_suffix = ' sim at 95%'
 low_threshold = 0.05
-low_threshold_suffix = ' reached 5%'
+low_threshold_suffix = ' sim at 5%'
 
 # simulate all cases where the test reduces/improves the conversion rate from -5% to +5%
 start_dt = datetime( 2015, 2, 25, 12) #Wed at noon GMT
 hour_dt = timedelta( hours = 1 )
+min_wait_dt = timedelta( days = 5 )
 
 #Percent improvements of B over A for testing
 # eleven 5% improvements are just as good as three 20% improvements
-b_improvements = [-0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2]
+b_improvements = [-0.2, -0.15, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 0.15, 0.2]
 
 #################################
 # Model Parameters
@@ -209,22 +210,29 @@ for j in range( 0, num_samples, samples_per_hour):
     series_time.append( curr_dt )
 
     #Generate threshold crossings
-    # Must have a minimum number of hours before we call something in case there are no conversions
+    # Must have a minimum number of hours (1 right now) before we call something in case there are no conversions
     test_idx = 0
-    for i in b_improvements:
-	if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] >= hi_threshold ) ):
-	    thresh_uniform[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] <= low_threshold ) ):
-	    thresh_uniform[i] = (curr_dt,str(i) + low_threshold_suffix)
-	if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] >= hi_threshold ) ):
-	    thresh_linear[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] <= low_threshold ) ):
-	    thresh_linear[i] = (curr_dt,str(i) + low_threshold_suffix)
-	if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] >= hi_threshold ) ):
-	    thresh_audience[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] <= low_threshold ) ):
-	    thresh_audience[i] = (curr_dt,str(i) + low_threshold_suffix)
-	test_idx += 1
+    if ( idx > 0 ):
+	for i in b_improvements:
+	    if ( i > 0 ):
+		prefix = '+'
+	    else:
+		prefix = '-'
+	    name =  prefix + str(abs(i * 100)) + '%'
+
+	    if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] >= hi_threshold ) ):
+		thresh_uniform[i] = (curr_dt,name + hi_threshold_suffix)
+	    if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] <= low_threshold ) ):
+		thresh_uniform[i] = (curr_dt,name + low_threshold_suffix)
+	    if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] >= hi_threshold ) ):
+		thresh_linear[i] = (curr_dt,name + hi_threshold_suffix)
+	    if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] <= low_threshold ) ):
+		thresh_linear[i] = (curr_dt,name + low_threshold_suffix)
+	    if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] >= hi_threshold ) ):
+		thresh_audience[i] = (curr_dt,name + hi_threshold_suffix)
+	    if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] <= low_threshold ) ):
+		thresh_audience[i] = (curr_dt,name + low_threshold_suffix)
+	    test_idx += 1
 
     curr_dt += hour_dt
     idx += 1
@@ -255,7 +263,10 @@ for i in range( 0, len(b_improvements) ):
 
 if ( cutoff_date != 0 ):
     ax[0].axvline(cutoff_date, color='k')
-    ax[0].annotate(significant_cutoff_text, xy=(cutoff_date, 0.5), xytext=(cutoff_date + 12*hour_dt, 0.5), arrowprops=dict(facecolor='black', shrink=0.05) )
+    ax[0].annotate(significant_cutoff_text, xy=(cutoff_date, 0.5), xytext=(cutoff_date + 12*hour_dt, 0.5), arrowprops=dict(facecolor='black', shrink=0.05, width=1, headwidth=4) )
+
+ax[0].axvline(start_dt + min_wait_dt, color='r')
+ax[0].annotate("How long we're actually waiting?", xy=(start_dt + min_wait_dt, 0.5), xytext=(start_dt + min_wait_dt + 12*hour_dt, 0.5), arrowprops=dict(facecolor='black', shrink=0.05, width=1, headwidth=4) )
 
 ax[0].axhline(0.95, color='k', linestyle='-.')
 ax[0].axhline(0.99, color='k', linestyle='--')
@@ -266,7 +277,14 @@ ax[0].xaxis.set_major_formatter(daysFmt)
 ax[0].xaxis.set_minor_locator(hours_loc)
 ax[0].set_ylim([0,1.0])
 
-fig.legend( tuple(lines), tuple(b_improvements), loc='center right', title='% improvement of B over A' )
+line_names = []
+for i in b_improvements:
+    if ( i > 0 ):
+	prefix = '+'
+    else:
+	prefix = '-'
+    line_names.append( prefix + str(abs(i * 100)) + '%' )
+fig.legend( tuple(lines), tuple(line_names), loc='center right', title='% improvement of B over A' )
 
 for sn in range(1,4):
     splt = ax[sn]
@@ -299,8 +317,8 @@ for sn in range(1,4):
     hgt = 0.1
     for k in thresh.keys():
 	splt.axvline(thresh[k][0],color='k')
-	splt.annotate(thresh[k][1], xy=(thresh[k][0], hgt), xytext=(thresh[k][0] + 12*hour_dt, hgt), arrowprops=dict(facecolor='black', shrink=0.05) )
-	hgt += 0.2
+	splt.annotate(thresh[k][1], xy=(thresh[k][0], hgt), xytext=(thresh[k][0] + 12*hour_dt, hgt), arrowprops=dict(facecolor='black', shrink=0.05, width=1, headwidth=4) )
+	hgt += 0.1
 
 
 plt.show()
