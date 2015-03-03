@@ -12,13 +12,79 @@ from datetime import *
 import os
 import time
 
-# Input data
-alpha = 1
-beta = 1
-N_a = 200
-N_b = 204
-s_a = 16
-s_b = 18
+#################################
+# Input data for simulations
+
+#WP.com Homepage Signup
+chart_name = 'WP.com Homepage Signup Simulation  (12.5k users per hour)'
+prior_conv_rate = 0.1
+samples_per_hour = 12500
+days = 3
+
+#Akismet Plugin Signup : https://mc.a8c.com/tracks/akismet/acquisition/plugin-signup/
+#chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
+#prior_conv_rate = 0.1456
+#samples_per_hour = 175
+#days = 7
+
+#Akismet Developer Signup
+#chart_name = 'Akismet Developer Signup Simulation (3 users per hour)'
+#prior_conv_rate = 13/255
+#samples_per_hour = int( round( 255 / 4 / 24 ) )
+#days = 21
+
+#################################
+# Configuration
+
+significant_cutoff = 1000
+significant_cutoff_text = '1,000 samples'
+
+hi_threshold = 0.95
+hi_threshold_suffix = ' reached 95%'
+low_threshold = 0.05
+low_threshold_suffix = ' reached 5%'
+
+# simulate all cases where the test reduces/improves the conversion rate from -5% to +5%
+start_dt = datetime( 2015, 2, 25, 12) #Wed at noon GMT
+hour_dt = timedelta( hours = 1 )
+
+#Percent improvements of B over A for testing
+# eleven 5% improvements are just as good as three 20% improvements
+b_improvements = [-0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2]
+
+#################################
+# Model Parameters
+
+#Custom audience distribution - assume start on Wed cause I like to deploy on Wed
+#hour_dist = [.01] * 24 #first day get 1% of audience per hour
+#hour_dist += [.005] * 24 #Thurs
+#hour_dist += [.005] * 24 #Fri
+#hour_dist += [.01] * 24 #Sat - uptick in new users
+#hour_dist += [.005] * 24 #Sun
+#hour_dist += [0.01/3.0] * 24 #Mon
+#hour_dist += [0.01/3.0] * 24 #Tues
+
+#f(x) = log(a(x-b))
+#log 0.0 to 0.8
+#a = .026879498
+#b = 37.203075742
+
+#Build a logarithmic distribution of the audience
+#f(x) = log(a(x-b))
+#log 0.0 to 1.0
+a = .010227857
+b = 97.772192161
+hour_dist = []
+last = 0
+for i in range(0,7*24):
+    n = - abs( log(a*(i+b)) )
+    hour_dist.append( last - n )
+    last = n
+
+
+#################################
+# AB Testing functions
+
 
 # Based on http://www.evanmiller.org/bayesian-ab-testing.html
 def prob_b_beats_a(N_a, s_a, N_b, s_b, alpha, beta):
@@ -49,77 +115,12 @@ def isvalid_b_beats_a( N_a, s_a, N_b, s_b ):
     return p
 
 
-#prob_a_b = prob_b_beats_a(N_a, s_a, N_b, s_b, alpha, beta)
-#print "Prob B beats A: " + str(prob_a_b)
-#
-#prob_a_b = isvalid_b_beats_a(N_a, s_a, N_b, s_b)
-#print "isvalid Prob B beats A: " + str(prob_a_b)
-#
-#exit()
-
-#test cases
-
-significant_cutoff = 1000
-significant_cutoff_text = '1,000 samples'
-hi_threshold = 0.95
-hi_threshold_suffix = ' reached 95%'
-low_threshold = 0.05
-low_threshold_suffix = ' reached 5%'
-
-#WP.com Homepage Signup
-chart_name = 'WP.com Homepage Signup Simulation  (xxx users per hour)'
-prior_conv_rate = 0.1
-samples_per_hour = 12500
-days = 3
-
-#Akismet Plugin Signup : https://mc.a8c.com/tracks/akismet/acquisition/plugin-signup/
-#chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
-#prior_conv_rate = 0.1456
-#samples_per_hour = 175
-#days = 7
-
-#Akismet Developer Signup
-#chart_name = 'Akismet Developer Signup Simulation (3 users per hour)'
-#prior_conv_rate = 13/255
-#samples_per_hour = int( round( 255 / 4 / 24 ) )
-#days = 21
-
-#Build an audience distribution - assume start on Wed cause I like to deploy on Wed
-#hour_dist = [.01] * 24 #first day get 1% of audience per hour
-#hour_dist += [.005] * 24 #Thurs
-#hour_dist += [.005] * 24 #Fri
-#hour_dist += [.01] * 24 #Sat - uptick in new users
-#hour_dist += [.005] * 24 #Sun
-#hour_dist += [0.01/3.0] * 24 #Mon
-#hour_dist += [0.01/3.0] * 24 #Tues
-
-#f(x) = log(a(x-b))
-#log 0.0 to 0.8
-#a = .026879498
-#b = 37.203075742
-
-#Build a logarithmic distribution of the audience
-#f(x) = log(a(x-b))
-#log 0.0 to 1.0
-a = .010227857
-b = 97.772192161
-hour_dist = []
-last = 0
-for i in range(0,7*24):
-    n = - abs( log(a*(i+b)) )
-    hour_dist.append( last - n )
-    last = n
+#################################
+# Simulations
 
 num_samples = days * 24 * samples_per_hour
 a_mean = prior_conv_rate
 
-# simulate all cases where the test reduces/improves the conversion rate from -5% to +5%
-start_dt = datetime( 2015, 2, 25, 12) #Wed at noon GMT
-hour_dt = timedelta( hours = 1 )
-#b_improvements = linspace( -0.1, 0.1, 21)
-# eleven 5% improvements are just as good as three 20% improvements
-#b_improvements = [-0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2]
-b_improvements = [-0.2, 0.0, 0.2]
 results_bayes_uniform = []
 results_bayes_linear = []
 results_bayes_audience = []
@@ -190,6 +191,9 @@ sim_time = time.clock() - sim_time
 print "Total Simulation Time: " + str(sim_time)
 print "Worst Model Time: " + str(worst_model_time)
 
+#################################
+# Post Process - thresholds, etc
+
 hourly_sample_cnt = []
 series_time = []
 curr_dt = start_dt
@@ -224,6 +228,10 @@ for j in range( 0, num_samples, samples_per_hour):
 
     curr_dt += hour_dt
     idx += 1
+
+#################################
+# Plotting
+
 
 # http://matplotlib.org/users/pyplot_tutorial.html
 
