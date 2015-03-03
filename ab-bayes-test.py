@@ -16,16 +16,16 @@ import time
 # Input data for simulations
 
 #WP.com Homepage Signup
-#chart_name = 'WP.com Homepage Signup Simulation  (12.5k users per hour)'
-#prior_conv_rate = 0.1
-#samples_per_hour = 12500
-#days = 7
+chart_name = 'WP.com Homepage Signup Simulation  (12.5k users per hour)'
+prior_conv_rate = 0.1
+samples_per_hour = 12500
+days = 7
 
 #Akismet Plugin Signup : https://mc.a8c.com/tracks/akismet/acquisition/plugin-signup/
-chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
-prior_conv_rate = 0.1456
-samples_per_hour = 175
-days = 7
+#chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
+#prior_conv_rate = 0.1456
+#samples_per_hour = 175
+#days = 7
 
 #Akismet Developer Signup
 #chart_name = 'Akismet Developer Signup Simulation (3 users per hour)'
@@ -210,9 +210,9 @@ for j in range( 0, num_samples, samples_per_hour):
     series_time.append( curr_dt )
 
     #Generate threshold crossings
-    # Must have a minimum number of hours (1 right now) before we call something in case there are no conversions
+    # Must have a minimum number of hours (6 right now) before we call something in case there are no conversions
     test_idx = 0
-    if ( idx > 0 ):
+    if ( idx > 6 ):
 	for i in b_improvements:
 	    if ( i > 0 ):
 		prefix = '+'
@@ -252,7 +252,7 @@ colormap = plt.cm.winter
 fig, ax = plt.subplots(4, 1)
 
 #IsValid
-ax[0].set_title('IsValid Probability B beats A')
+ax[0].set_title('IsValid Probability B beats A', fontsize=12)
 ax[0].set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(b_improvements))])
 lines = []
 for i in range( 0, len(b_improvements) ):
@@ -285,21 +285,22 @@ for i in b_improvements:
 	prefix = '-'
     line_names.append( prefix + str(abs(i * 100)) + '%' )
 fig.legend( tuple(lines), tuple(line_names), loc='center right', title='% improvement of B over A' )
+fig.suptitle( chart_name, fontsize=14 )
 
 for sn in range(1,4):
     splt = ax[sn]
     if ( sn == 1 ):
 	data = results_bayes_uniform
 	thresh = thresh_uniform
-	splt.set_title('Bayesian Probability B beats A (uniform prior)')
+	splt.set_title('Bayesian Probability B beats A (uniform prior)', fontsize=12)
     elif ( sn == 2 ):
 	data = results_bayes_linear
 	thresh = thresh_linear
-	splt.set_title('Bayesian Probability B beats A (prior linearly decreases over one week)')
+	splt.set_title('Bayesian Probability B beats A (prior linearly decreases over one week)', fontsize=12)
     elif ( sn == 3 ):
 	data = results_bayes_audience
 	thresh = thresh_audience
-	splt.set_title('Bayesian Probability B beats A (prior logarithmically decreases over one week)')
+	splt.set_title('Bayesian Probability B beats A (prior logarithmically decreases over one week)', fontsize=12)
 
     splt.set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(b_improvements))])
     for i in range( 0, len(b_improvements) ):
