@@ -7,7 +7,7 @@ from math import erf
 from scipy.stats import beta, norm, uniform
 from scipy.special import betaln
 from random import random, normalvariate
-from numpy import *
+import numpy as np
 from datetime import *
 import os
 import time
@@ -26,9 +26,13 @@ def prob_b_beats_a(N_a, s_a, N_b, s_b, alpha, beta):
     b_a = beta + N_a - s_a
     a_b = alpha + s_b
     b_b = beta + N_b - s_b
-    total = 0.0
-    for i in range(0, a_b-1):
-	total += exp( betaln(a_a+i, b_b+b_a) - log(b_b+i) - betaln(1+i, b_b) - betaln(a_a, b_a) )
+    #Using numpy here rather than a for loop speeds this up by 100x
+    # For loop left in for clarity
+    #total = 0.0
+    #for i in range(0, a_b-1):
+    #    total += exp( betaln(a_a+i, b_b+b_a) - log(b_b+i) - betaln(1+i, b_b) - betaln(a_a, b_a) )
+    d = np.arange(0, a_b-1)
+    total = np.sum( np.exp( betaln(a_a+d,b_b+b_a) - np.log(b_b+d) - betaln(1+d, b_b) - betaln(a_a, b_a) ) )
     return total
 
 def sigma( mu, s, N ):
@@ -124,17 +128,10 @@ sim_time = time.clock()
 worst_model_time = 0
 for i in b_improvements:
     b_mean = a_mean * (1.0 + i)
-    samples_a = []
-    samples_b = []
-    for j in range(0,num_samples):
-	if ( random.random() < a_mean ):
-	    samples_a.append( 1 )
-	else:
-	    samples_a.append( 0 )
-	if ( random.random() < b_mean ):
-	    samples_b.append( 1 )
-	else:
-	    samples_b.append( 0 )
+    samples_a = np.random.random(num_samples)
+    samples_b = np.random.random(num_samples)
+    samples_a = np.int8(samples_a < a_mean)
+    samples_b = np.int8(samples_b < b_mean)
 
     #look at the samples in chunks of one hour
     bayes_series_linear = []
@@ -144,10 +141,10 @@ for i in b_improvements:
     curr_dt = start_dt
     audience_percent = 0.0
     aud_idx = 0
-    for j in range( 0, num_samples, samples_per_hour):
+    for j in xrange( 0, num_samples, samples_per_hour):
 	sample_cnt = j + samples_per_hour
-	conv_a_cnt = sum( samples_a[0:sample_cnt] )
-	conv_b_cnt = sum( samples_b[0:sample_cnt] )
+	conv_a_cnt = np.sum( samples_a[0:sample_cnt] )
+	conv_b_cnt = np.sum( samples_b[0:sample_cnt] )
 	if ( aud_idx < len(hour_dist) - 1 ):
 	    audience_percent += hour_dist[aud_idx]
 	else:
@@ -209,22 +206,21 @@ for j in range( 0, num_samples, samples_per_hour):
 
     #Generate threshold crossings
     # Must have a minimum number of hours before we call something in case there are no conversions
-    if ( idx > 12 ):
-	test_idx = 0
-	for i in b_improvements:
-	    if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] >= hi_threshold ) ):
-		thresh_uniform[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	    if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] <= low_threshold ) ):
-		thresh_uniform[i] = (curr_dt,str(i) + low_threshold_suffix)
-	    if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] >= hi_threshold ) ):
-		thresh_linear[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	    if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] <= low_threshold ) ):
-		thresh_linear[i] = (curr_dt,str(i) + low_threshold_suffix)
-	    if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] >= hi_threshold ) ):
-		thresh_audience[i] = (curr_dt,str(i) + hi_threshold_suffix)
-	    if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] <= low_threshold ) ):
-		thresh_audience[i] = (curr_dt,str(i) + low_threshold_suffix)
-	    test_idx += 1
+    test_idx = 0
+    for i in b_improvements:
+	if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] >= hi_threshold ) ):
+	    thresh_uniform[i] = (curr_dt,str(i) + hi_threshold_suffix)
+	if ( not thresh_uniform.has_key(i) and ( results_bayes_uniform[test_idx][idx] <= low_threshold ) ):
+	    thresh_uniform[i] = (curr_dt,str(i) + low_threshold_suffix)
+	if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] >= hi_threshold ) ):
+	    thresh_linear[i] = (curr_dt,str(i) + hi_threshold_suffix)
+	if ( not thresh_linear.has_key(i) and ( results_bayes_linear[test_idx][idx] <= low_threshold ) ):
+	    thresh_linear[i] = (curr_dt,str(i) + low_threshold_suffix)
+	if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] >= hi_threshold ) ):
+	    thresh_audience[i] = (curr_dt,str(i) + hi_threshold_suffix)
+	if ( not thresh_audience.has_key(i) and ( results_bayes_audience[test_idx][idx] <= low_threshold ) ):
+	    thresh_audience[i] = (curr_dt,str(i) + low_threshold_suffix)
+	test_idx += 1
 
     curr_dt += hour_dt
     idx += 1
