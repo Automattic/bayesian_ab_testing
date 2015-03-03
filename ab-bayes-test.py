@@ -80,16 +80,30 @@ samples_per_hour = int( round( 255 / 4 / 24 ) )
 days = 21
 
 #Build an audience distribution - assume start on Wed cause I like to deploy on Wed
-hour_dist = [.01] * 24 #first day get 1% of audience per hour
-hour_dist += [.005] * 24 #Thurs
-hour_dist += [.005] * 24 #Fri
-hour_dist += [.01] * 24 #Sat - uptick in new users
-hour_dist += [.005] * 24 #Sun
-hour_dist += [0.01/3.0] * 24 #Mon
-hour_dist += [0.01/3.0] * 24 #Tues
+#hour_dist = [.01] * 24 #first day get 1% of audience per hour
+#hour_dist += [.005] * 24 #Thurs
+#hour_dist += [.005] * 24 #Fri
+#hour_dist += [.01] * 24 #Sat - uptick in new users
+#hour_dist += [.005] * 24 #Sun
+#hour_dist += [0.01/3.0] * 24 #Mon
+#hour_dist += [0.01/3.0] * 24 #Tues
 
 #f(x) = log(a(x-b))
+#log 0.0 to 0.8
+#a = .026879498
+#b = 37.203075742
 
+#Build a logarithmic distribution of the audience
+#f(x) = log(a(x-b))
+#log 0.0 to 1.0
+a = .010227857
+b = 97.772192161
+hour_dist = []
+last = 0
+for i in range(0,7*24):
+    n = - abs( log(a*(i+b)) )
+    hour_dist.append( last - n )
+    last = n
 
 num_samples = days * 24 * samples_per_hour
 a_mean = prior_conv_rate
@@ -129,7 +143,6 @@ for i in b_improvements:
 	sample_cnt = j + samples_per_hour
 	conv_a_cnt = sum( samples_a[0:sample_cnt] )
 	conv_b_cnt = sum( samples_b[0:sample_cnt] )
-	#TODO: is this the right formula for a beta dist with a mean?
 	if ( aud_idx < len(hour_dist) - 1 ):
 	    audience_percent += hour_dist[aud_idx]
 	else:
@@ -142,7 +155,6 @@ for i in b_improvements:
 	bayes_series_uniform.append( prob_b_beats_a( sample_cnt, conv_a_cnt, sample_cnt, conv_b_cnt, alpha, beta ) )
 
 	#linear
-	# TODO: correct alpha/beta
 	# alpha = number of successful conversions
 	# beta = number of failed conversions
 	#alpha = num_samples - j + 1
@@ -151,7 +163,6 @@ for i in b_improvements:
 	bayes_series_linear.append( prob_b_beats_a( sample_cnt, conv_a_cnt, sample_cnt, conv_b_cnt, alpha, beta ) )
 
 	#audience
-	# TODO: correct alpha/beta
 	# balance with total weekly audience not yet seen
 	#alpha = int(audience_percent * num_samples) + 1
 	alpha = int( ( audience_percent * num_samples ) * prior_conv_rate ) + 1
@@ -217,10 +228,12 @@ fig, ax = plt.subplots(4, 1)
 #IsValid
 ax[0].set_title('IsValid Probability B beats A')
 ax[0].set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(b_improvements))])
+lines = []
 for i in range( 0, len(b_improvements) ):
     #print str( results_isvalid[i] )
     #print str( series_time )
-    ax[0].plot( series_time, results_isvalid[i] )
+    l, = ax[0].plot( series_time, results_isvalid[i] )
+    lines.append( l )
 
 if ( cutoff_date != 0 ):
     ax[0].axvline(cutoff_date, color='k')
@@ -234,8 +247,8 @@ ax[0].xaxis.set_major_locator(days_loc)
 ax[0].xaxis.set_major_formatter(daysFmt)
 ax[0].xaxis.set_minor_locator(hours_loc)
 ax[0].set_ylim([0,1.0])
-#ax[0].legend(b_improvements, loc='upper right', title='% improvement of B over A')
-#TODO: use figlegend
+
+fig.legend( tuple(lines), tuple(b_improvements), loc='center right', title='% improvement of B over A' )
 
 for sn in range(1,4):
     splt = ax[sn]
