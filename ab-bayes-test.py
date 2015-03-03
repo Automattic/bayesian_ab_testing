@@ -21,7 +21,7 @@ prior_conv_rate = 0.1
 samples_per_hour = 12500
 days = 7
 
-#Akismet Plugin Signup : https://mc.a8c.com/tracks/akismet/acquisition/plugin-signup/
+#Akismet Plugin Signup
 #chart_name = 'Akismet Plugin Signup Simulation  (175 users per hour)'
 #prior_conv_rate = 0.1456
 #samples_per_hour = 175
